@@ -62,11 +62,17 @@ export default function SignUpForm() {
       await signUp.prepareEmailAddressVerification({ strategy: "email_code" });
       setVerifying(true);
     } catch (error: any) {
-      console.error("Sign-up error:", error);
-      setAuthError(
-        error.errors?.[0]?.message ||
-          "An error occurred during sign-up. Please try again."
-      );
+      const breachedPasswordMsg =
+        "Password has been found in an online data breach. For account safety, please use a different password.";
+      const errorMsg = error.errors?.[0]?.message || "An error occurred during sign-up. Please try again.";
+      if (errorMsg.includes("online data breach")) {
+        setAuthError(
+          "Your password was found in a known data breach. Please choose a stronger, unique password for your account.\n\nTips for a strong password:\n- Use at least 8 characters\n- Mix uppercase, lowercase, numbers, and symbols\n- Avoid common words and patterns"
+        );
+      } else {
+        console.error("Sign-up error:", error);
+        setAuthError(errorMsg);
+      }
     } finally {
       setIsSubmitting(false);
     }
@@ -77,6 +83,12 @@ export default function SignUpForm() {
   ) => {
     e.preventDefault();
     if (!isLoaded || !signUp) return;
+
+    // Prevent verification if already signed in
+    if (signUp.status === "complete") {
+      setVerificationError("You're already signed in. Please continue to your dashboard.");
+      return;
+    }
 
     setIsSubmitting(true);
     setVerificationError(null);
@@ -97,10 +109,12 @@ export default function SignUpForm() {
       }
     } catch (error: any) {
       console.error("Verification error:", error);
-      setVerificationError(
-        error.errors?.[0]?.message ||
-          "An error occurred during verification. Please try again."
-      );
+      const errorMsg = error.errors?.[0]?.message || "An error occurred during verification. Please try again.";
+      if (errorMsg.includes("already signed in")) {
+        setVerificationError("You're already signed in. Please continue to your dashboard.");
+      } else {
+        setVerificationError(errorMsg);
+      }
     } finally {
       setIsSubmitting(false);
     }
@@ -194,9 +208,15 @@ export default function SignUpForm() {
 
       <CardBody className="py-6">
         {authError && (
-          <div className="bg-danger-50 text-danger-700 p-4 rounded-lg mb-6 flex items-center gap-2">
-            <AlertCircle className="h-5 w-5 flex-shrink-0" />
-            <p>{authError}</p>
+          <div className="bg-danger-50 text-danger-700 p-4 rounded-lg mb-6 flex items-start gap-2">
+            <AlertCircle className="h-5 w-5 flex-shrink-0 mt-1" />
+            <div>
+              {authError.split("\n").map((line, idx) => (
+                <p key={idx} className={idx === 0 ? "font-semibold" : "text-sm mt-1"}>
+                  {line}
+                </p>
+              ))}
+            </div>
           </div>
         )}
 
@@ -298,6 +318,7 @@ export default function SignUpForm() {
             </div>
           </div>
 
+          <div id="clerk-captcha" />
           <Button
             type="submit"
             color="primary"
