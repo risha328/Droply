@@ -155,7 +155,7 @@ export default function FileUploadForm({
     setCreatingFolder(true);
 
     try {
-      await axios.post("/api/folders/create", {
+  await axios.post("/api/folder/create", {
         name: folderName.trim(),
         userId: userId,
         parentId: currentFolder,
