@@ -155,7 +155,7 @@ export default function FileUploadForm({
     setCreatingFolder(true);
 
     try {
-  await axios.post("/api/folder/create", {
+      await axios.post("/api/folder/create", {
         name: folderName.trim(),
         userId: userId,
         parentId: currentFolder,
@@ -325,50 +325,72 @@ export default function FileUploadForm({
         isOpen={folderModalOpen}
         onOpenChange={setFolderModalOpen}
         backdrop="blur"
+        size="md"
         classNames={{
-          base: "border border-default-200 bg-default-5",
-          header: "border-b border-default-200",
-          footer: "border-t border-default-200",
+          base: "border border-default-200 bg-background",
+          header: "border-b border-default-200 pb-4",
+          footer: "border-t border-default-200 pt-4",
+          body: "py-6",
         }}
       >
         <ModalContent>
-          <ModalHeader className="flex gap-2 items-center">
-            <FolderPlus className="h-5 w-5 text-primary" />
-            <span>New Folder</span>
-          </ModalHeader>
-          <ModalBody>
-            <div className="space-y-4">
-              <p className="text-sm text-default-600">
-                Enter a name for your folder:
-              </p>
-              <Input
-                type="text"
-                label="Folder Name"
-                placeholder="My Images"
-                value={folderName}
-                onChange={(e) => setFolderName(e.target.value)}
-                autoFocus
-              />
-            </div>
-          </ModalBody>
-          <ModalFooter>
-            <Button
-              variant="flat"
-              color="default"
-              onClick={() => setFolderModalOpen(false)}
-            >
-              Cancel
-            </Button>
-            <Button
-              color="primary"
-              onClick={handleCreateFolder}
-              isLoading={creatingFolder}
-              isDisabled={!folderName.trim()}
-              endContent={!creatingFolder && <ArrowRight className="h-4 w-4" />}
-            >
-              Create
-            </Button>
-          </ModalFooter>
+          {(onClose) => (
+            <>
+              <ModalHeader className="flex flex-col gap-1">
+                <div className="flex items-center gap-2">
+                  <FolderPlus className="h-5 w-5 text-primary" />
+                  <span className="text-lg font-semibold">Create New Folder</span>
+                </div>
+                <p className="text-sm text-default-500 font-normal mt-1">
+                  Organize your files by creating a new folder
+                </p>
+              </ModalHeader>
+              <ModalBody>
+                <div className="flex flex-col gap-2">
+                  <label htmlFor="folderName" className="text-sm font-medium text-default-600">
+                    Folder Name
+                  </label>
+                  <Input
+                    id="folderName"
+                    type="text"
+                    placeholder="Enter folder name"
+                    value={folderName}
+                    onChange={(e) => setFolderName(e.target.value)}
+                    autoFocus
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" && folderName.trim()) {
+                        handleCreateFolder();
+                      }
+                    }}
+                    classNames={{
+                      input: "text-base",
+                      mainWrapper: "w-full"
+                    }}
+                  />
+                </div>
+              </ModalBody>
+              <ModalFooter>
+                <Button
+                  variant="flat"
+                  color="default"
+                  onPress={onClose}
+                  className="font-medium"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  color="primary"
+                  onPress={handleCreateFolder}
+                  isLoading={creatingFolder}
+                  isDisabled={!folderName.trim()}
+                  className="font-medium"
+                  endContent={!creatingFolder && <ArrowRight className="h-4 w-4" />}
+                >
+                  Create Folder
+                </Button>
+              </ModalFooter>
+            </>
+          )}
         </ModalContent>
       </Modal>
     </div>
