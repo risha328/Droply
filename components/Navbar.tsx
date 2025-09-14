@@ -1,6 +1,6 @@
 "use client";
 
-import { useClerk, SignedIn, SignedOut } from "@clerk/nextjs";
+import { useClerk, SignedIn, SignedOut, useUser } from "@clerk/nextjs";
 import { useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
 import { CloudUpload, ChevronDown, User, Menu, X } from "lucide-react";
@@ -11,24 +11,11 @@ import {
   DropdownMenu,
   DropdownItem,
 } from "@heroui/dropdown";
-import { Avatar } from "@heroui/avatar";
+
 import { Button } from "@heroui/button";
 import { useState, useEffect, useRef } from "react";
 
-interface SerializedUser {
-  id: string;
-  firstName?: string | null;
-  lastName?: string | null;
-  imageUrl?: string | null;
-  username?: string | null;
-  emailAddress?: string | null;
-}
-
-interface NavbarProps {
-  user?: SerializedUser | null;
-}
-
-export default function Navbar({ user }: NavbarProps) {
+export default function Navbar() {
   const { signOut } = useClerk();
   const router = useRouter();
   const pathname = usePathname();
@@ -103,25 +90,24 @@ export default function Navbar({ user }: NavbarProps) {
     });
   };
 
+  const { user } = useUser();
+
   // Process user data with defaults if not provided
   const userDetails = {
     fullName: user
       ? `${user.firstName || ""} ${user.lastName || ""}`.trim()
       : "",
     initials: user
-      ? `${user.firstName || ""} ${user.lastName || ""}`
-          .trim()
-          .split(" ")
-          .map((name) => name?.[0] || "")
-          .join("")
-          .toUpperCase() || "U"
+      ? user.emailAddresses?.[0]?.emailAddress
+        ? user.emailAddresses[0].emailAddress[0].toUpperCase()
+        : "U"
       : "U",
     displayName: user
       ? user.firstName && user.lastName
         ? `${user.firstName} ${user.lastName}`
-        : user.firstName || user.username || user.emailAddress || "User"
+        : user.firstName || user.username || user.emailAddresses?.[0]?.emailAddress || "User"
       : "User",
-    email: user?.emailAddress || "",
+    email: user?.emailAddresses?.[0]?.emailAddress || "",
   };
 
   const toggleMobileMenu = () => {
@@ -132,7 +118,6 @@ export default function Navbar({ user }: NavbarProps) {
   const navItems = [
     { name: "About", href: "/about" },
     { name: "Blog", href: "/blog" },
-    // { name: "Careers", href: "/careers" },
     { name: "Contact", href: "/contact" },
   ];
 
@@ -159,7 +144,7 @@ export default function Navbar({ user }: NavbarProps) {
           {/* Right: Navigation and user actions */}
           <div className="flex items-center gap-6">
             {/* Desktop Navigation Items */}
-            <nav className="hidden lg:flex items-center gap-6">
+            <nav className="hidden md:flex items-center gap-6">
               {navItems.map((item) => (
                 <Link
                   key={item.name}
@@ -175,89 +160,57 @@ export default function Navbar({ user }: NavbarProps) {
             <div className="hidden md:flex items-center gap-4">
               <ThemeSwitcher />
 
-              {/* Show these buttons when user is signed out */}
+              {/* User icon or dropdown */}
               <SignedOut>
-                <div className="flex items-center gap-3">
-                  {navItems.slice(0, 2).map((item) => (
-                    <Link
-                      key={item.name}
-                      href={item.href}
-                      className="text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 text-sm font-medium transition-colors duration-200"
-                    >
-                      {item.name}
-                    </Link>
-                  ))}
-                  <Link href="/sign-in">
-                    <Button variant="light" color="primary" size="sm">
-                      Sign In
-                    </Button>
-                  </Link>
-                  <Link href="/sign-up">
-                    <Button variant="solid" color="primary" size="sm">
-                      Sign Up
-                    </Button>
-                  </Link>
-                </div>
+                <Link href="/sign-in">
+                  <Button
+                    variant="light"
+                    className="p-0 bg-transparent min-w-0 h-10"
+                  >
+                    <User className="h-6 w-6 text-gray-700 dark:text-gray-300" />
+                  </Button>
+                </Link>
               </SignedOut>
 
-              {/* Show these when user is signed in */}
               <SignedIn>
-                <div className="flex items-center gap-4">
-                  {!isOnDashboard && (
-                    <Link href="/dashboard">
-                      <Button variant="flat" color="primary" size="sm">
-                        Dashboard
-                      </Button>
-                    </Link>
-                  )}
-                  <Dropdown placement="bottom-end">
-                    <DropdownTrigger>
-                      <Button
-                        variant="light"
-                        className="p-0 bg-transparent min-w-0 h-10"
-                        endContent={<ChevronDown className="h-4 w-4 ml-1" />}
-                      >
-                        <div className="flex items-center gap-2">
-                          <Avatar
-                            name={userDetails.initials}
-                            size="sm"
-                            src={user?.imageUrl || undefined}
-                            className="h-8 w-8 flex-shrink-0"
-                            fallback={<User className="h-4 w-4" />}
-                          />
-                          <span className="text-gray-700 dark:text-gray-300 text-sm font-medium hidden sm:inline">
-                            {userDetails.displayName}
-                          </span>
-                        </div>
-                      </Button>
-                    </DropdownTrigger>
-                    <DropdownMenu aria-label="User actions" className="w-56">
-                      <DropdownItem
-                        key="profile"
-                        description={userDetails.email || "View your profile"}
-                        onClick={() => router.push("/dashboard?tab=profile")}
-                      >
-                        Profile
-                      </DropdownItem>
-                      <DropdownItem
-                        key="files"
-                        description="Manage your files"
-                        onClick={() => router.push("/dashboard")}
-                      >
-                        My Files
-                      </DropdownItem>
-                      <DropdownItem
-                        key="logout"
-                        description="Sign out of your account"
-                        className="text-danger"
-                        color="danger"
-                        onClick={handleSignOut}
-                      >
-                        Sign Out
-                      </DropdownItem>
-                    </DropdownMenu>
-                  </Dropdown>
-                </div>
+                <Dropdown placement="bottom-end">
+                  <DropdownTrigger>
+                    <Button
+                      variant="light"
+                      className="p-0 bg-transparent min-w-0 h-10"
+                      endContent={<ChevronDown className="h-4 w-4 ml-1" />}
+                    >
+                      <div className="h-8 w-8 bg-blue-600 rounded-full flex items-center justify-center text-white text-sm font-medium">
+                        {userDetails.initials}
+                      </div>
+                    </Button>
+                  </DropdownTrigger>
+                  <DropdownMenu aria-label="User actions" className="w-56">
+                    <DropdownItem
+                      key="profile"
+                      description={userDetails.email || "View your profile"}
+                      onClick={() => router.push("/dashboard?tab=profile")}
+                    >
+                      Profile
+                    </DropdownItem>
+                    <DropdownItem
+                      key="files"
+                      description="Manage your files"
+                      onClick={() => router.push("/dashboard")}
+                    >
+                      My Files
+                    </DropdownItem>
+                    <DropdownItem
+                      key="logout"
+                      description="Sign out of your account"
+                      className="text-danger"
+                      color="danger"
+                      onClick={handleSignOut}
+                    >
+                      Sign Out
+                    </DropdownItem>
+                  </DropdownMenu>
+                </Dropdown>
               </SignedIn>
             </div>
           </div>
@@ -265,14 +218,20 @@ export default function Navbar({ user }: NavbarProps) {
           {/* Mobile Menu Button */}
           <div className="md:hidden flex items-center gap-3">
             <ThemeSwitcher />
+            <SignedOut>
+              <Link href="/sign-in">
+                <Button
+                  variant="light"
+                  className="p-0 bg-transparent min-w-0 h-10"
+                >
+                  <User className="h-6 w-6 text-gray-700 dark:text-gray-300" />
+                </Button>
+              </Link>
+            </SignedOut>
             <SignedIn>
-              <Avatar
-                name={userDetails.initials}
-                size="sm"
-                src={user?.imageUrl || undefined}
-                className="h-8 w-8 flex-shrink-0"
-                fallback={<User className="h-4 w-4" />}
-              />
+              <div className="h-8 w-8 bg-blue-600 rounded-full flex items-center justify-center text-white text-sm font-medium">
+                {userDetails.initials}
+              </div>
             </SignedIn>
             <button
               className="z-50 p-2"
@@ -297,60 +256,56 @@ export default function Navbar({ user }: NavbarProps) {
             />
           )}
 
-          {/* Mobile Menu */}
-          <div
-            ref={mobileMenuRef}
-            className={`fixed top-0 right-0 bottom-0 w-4/5 max-w-sm bg-white dark:bg-gray-900 z-40 flex flex-col pt-20 px-6 shadow-xl transition-transform duration-300 ease-in-out ${
-              isMobileMenuOpen ? "translate-x-0" : "translate-x-full"
-            } md:hidden`}
-          >
-            <div className="flex flex-col gap-1 mb-6">
-              {navItems.map((item) => (
-                <Link
-                  key={item.name}
-                  href={item.href}
-                  className="py-3 px-4 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-md transition-colors font-medium"
-                  onClick={() => setIsMobileMenuOpen(false)}
-                >
-                  {item.name}
-                </Link>
-              ))}
-            </div>
-
-            <SignedOut>
-              <div className="flex flex-col gap-3 pt-4 border-t border-gray-200 dark:border-gray-800">
-                <Link
-                  href="/sign-in"
-                  className="w-full"
-                  onClick={() => setIsMobileMenuOpen(false)}
-                >
-                  <Button variant="light" color="primary" className="w-full">
-                    Sign In
-                  </Button>
-                </Link>
-                <Link
-                  href="/sign-up"
-                  className="w-full"
-                  onClick={() => setIsMobileMenuOpen(false)}
-                >
-                  <Button variant="solid" color="primary" className="w-full">
-                    Sign Up
-                  </Button>
-                </Link>
+            {/* Mobile Menu */}
+            <div
+              ref={mobileMenuRef}
+              className={`fixed top-0 right-0 bottom-0 w-4/5 max-w-sm bg-white dark:bg-gray-900 z-40 flex flex-col pt-20 px-6 shadow-xl transition-transform duration-300 ease-in-out ${
+                isMobileMenuOpen ? "translate-x-0" : "translate-x-full"
+              } md:hidden`}
+            >
+              <div className="flex flex-col gap-1 mb-6">
+                {navItems.map((item) => (
+                  <Link
+                    key={item.name}
+                    href={item.href}
+                    className="py-3 px-4 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-md transition-colors font-medium"
+                    onClick={() => setIsMobileMenuOpen(false)}
+                  >
+                    {item.name}
+                  </Link>
+                ))}
               </div>
-            </SignedOut>
+
+              <SignedOut>
+                <div className="flex flex-col gap-3 pt-4 border-t border-gray-200 dark:border-gray-800">
+                  <Link
+                    href="/sign-in"
+                    className="w-full"
+                    onClick={() => setIsMobileMenuOpen(false)}
+                  >
+                    <Button variant="light" color="primary" className="w-full">
+                      Sign In
+                    </Button>
+                  </Link>
+                  <Link
+                    href="/sign-up"
+                    className="w-full"
+                    onClick={() => setIsMobileMenuOpen(false)}
+                  >
+                    <Button variant="solid" color="primary" className="w-full">
+                      Sign Up
+                    </Button>
+                  </Link>
+                </div>
+              </SignedOut>
 
             <SignedIn>
               <div className="flex flex-col gap-6 pt-4 border-t border-gray-200 dark:border-gray-800">
                 {/* User info */}
                 <div className="flex items-center gap-3 py-4">
-                  <Avatar
-                    name={userDetails.initials}
-                    size="md"
-                    src={user?.imageUrl || undefined}
-                    className="h-10 w-10 flex-shrink-0"
-                    fallback={<User className="h-5 w-5" />}
-                  />
+                  <div className="h-10 w-10 bg-blue-600 rounded-full flex items-center justify-center text-white text-sm font-medium">
+                    {userDetails.initials}
+                  </div>
                   <div>
                     <p className="font-medium text-gray-900 dark:text-white">
                       {userDetails.displayName}
