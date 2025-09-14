@@ -209,10 +209,7 @@ export default function Footer() {
           </div>
 
           <div className="mt-8 md:mt-0 md:order-1">
-            <p className="text-xs text-gray-500">
-              &copy; 2025 Droply, Inc. All rights reserved.
-            </p>
-            <div className="mt-1 flex space-x-4 text-xs text-gray-500">
+            <div className="flex space-x-4 text-xs text-gray-500">
               <Link href="/privacy" className="hover:text-gray-600">
                 Privacy Policy
               </Link>

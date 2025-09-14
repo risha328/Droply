@@ -1,3 +1,4 @@
+import dynamic from "next/dynamic";
 import SignInForm from "@/components/SignInform";
 import { CloudUpload } from "lucide-react";
 import Link from "next/link";
