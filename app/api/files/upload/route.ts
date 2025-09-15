@@ -95,7 +95,7 @@
 // }
 
 
-
+//app/api/files/upload/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 import { db } from "@/lib/db";
@@ -122,6 +122,8 @@ export async function POST(request: NextRequest) {
     const file = formData.get("file") as File;
     const formUserId = formData.get("userId") as string;
     const parentId = (formData.get("parentId") as string) || null;
+    const encryptedAesKey = formData.get("encryptedAesKey") as string;
+    //const iv = formData.get("iv") as string;
 
     // Verify the user is uploading to their own account
     if (formUserId !== userId) {
@@ -130,6 +132,10 @@ export async function POST(request: NextRequest) {
 
     if (!file) {
       return NextResponse.json({ error: "No file provided" }, { status: 400 });
+    }
+
+    if (!encryptedAesKey) {
+      return NextResponse.json({ error: "Missing encrypted AES key" }, { status: 400 });
     }
 
     // Check if parent folder exists if parentId is provided
@@ -187,6 +193,8 @@ export async function POST(request: NextRequest) {
       type: file.type,
       fileUrl: uploadResponse.url,
       thumbnailUrl: uploadResponse.thumbnailUrl || null,
+      encryptedAesKey: encryptedAesKey,
+      //iv: iv,
       userId: userId,
       parentId: parentId,
       isFolder: false,

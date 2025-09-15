@@ -1,5 +1,13 @@
+//lib/db/schema.ts
 import { relations } from "drizzle-orm";
 import { text, uuid, integer, boolean, pgTable, timestamp } from "drizzle-orm/pg-core";
+
+export const users = pgTable("users", {
+    id: text("id").primaryKey(), // Clerk user ID
+    publicKey: text("public_key").notNull(), // RSA public key in PEM format
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
 
 export const files = pgTable("files", {
     id: uuid("id").defaultRandom().primaryKey(),
@@ -14,6 +22,8 @@ export const files = pgTable("files", {
     //storage info
     fileUrl: text("file_url").notNull(),  //url to access file
     thumbnailUrl: text("thumbnail_url"),   //url to thumbnail of the file
+    encryptedAesKey: text("encrypted_aes_key").notNull(), // AES key encrypted with user's RSA public key
+    //iv: text("iv").notNull(), // Initialization vector for AES-GCM encryption
 
 
     //OwnerShip info

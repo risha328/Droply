@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Button } from "@heroui/button";
 import { Progress } from "@heroui/progress";
 import { Input } from "@heroui/input";
@@ -21,6 +21,15 @@ import {
   ModalFooter,
 } from "@heroui/modal";
 import axios from "axios";
+import {
+  generateRSAKeyPair,
+  generateAESKey,
+  encryptFile,
+  encryptAESKeyWithRSA,
+  exportPrivateKey,
+  exportPublicKey,
+  importPublicKey,
+} from "@/lib/crypto";
 
 interface FileUploadFormProps {
   userId: string;
@@ -43,6 +52,58 @@ export default function FileUploadForm({
   const [folderModalOpen, setFolderModalOpen] = useState(false);
   const [folderName, setFolderName] = useState("");
   const [creatingFolder, setCreatingFolder] = useState(false);
+
+  // E2EE state
+  const [publicKey, setPublicKey] = useState<CryptoKey | null>(null);
+  const [keysInitialized, setKeysInitialized] = useState(false);
+
+  useEffect(() => {
+    initializeKeys();
+  }, [userId]);
+
+  const initializeKeys = async () => {
+    try {
+      const privateKeyBase64 = localStorage.getItem(`privateKey_${userId}`);
+
+      if (!privateKeyBase64) {
+        // Generate new keypair
+        const { publicKey: pubKeyCrypto, privateKey: privKeyCrypto } = await generateRSAKeyPair();
+        const priv = await exportPrivateKey(privKeyCrypto);
+        localStorage.setItem(`privateKey_${userId}`, priv);
+        const pub = await exportPublicKey(pubKeyCrypto);
+
+        // Send public key to server
+        await axios.post("/api/keys", { publicKey: pub });
+
+        setPublicKey(pubKeyCrypto);
+      } else {
+        try {
+          // Get public key from server
+          const response = await axios.get("/api/keys");
+          const pubPem = response.data.publicKey;
+          const pubKeyCrypto = await importPublicKey(pubPem);
+          setPublicKey(pubKeyCrypto);
+        } catch (getError: any) {
+          // If GET fails (e.g., 404), regenerate keys
+          console.warn("Public key not found on server, regenerating keys");
+          const { publicKey: pubKeyCrypto, privateKey: privKeyCrypto } = await generateRSAKeyPair();
+          const priv = await exportPrivateKey(privKeyCrypto);
+          localStorage.setItem(`privateKey_${userId}`, priv);
+          const pub = await exportPublicKey(pubKeyCrypto);
+
+          // Send public key to server
+          await axios.post("/api/keys", { publicKey: pub });
+
+          setPublicKey(pubKeyCrypto);
+        }
+      }
+
+      setKeysInitialized(true);
+    } catch (error) {
+      console.error("Error initializing keys:", error);
+      setError("Failed to initialize encryption keys");
+    }
+  };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
@@ -88,20 +149,31 @@ export default function FileUploadForm({
   };
 
   const handleUpload = async () => {
-    if (!file) return;
-
-    const formData = new FormData();
-    formData.append("file", file);
-    formData.append("userId", userId);
-    if (currentFolder) {
-      formData.append("parentId", currentFolder);
-    }
+    if (!file || !publicKey) return;
 
     setUploading(true);
     setProgress(0);
     setError(null);
 
     try {
+      // Encrypt the file
+      const { encryptedFile, aesKey: aesKeyCrypto, iv } = await encryptFile(file);
+
+      // Encrypt AES key with RSA public key
+      const encryptedAESKey = await encryptAESKeyWithRSA(publicKey, aesKeyCrypto);
+
+      // Use encrypted file blob
+      const encryptedBlob = encryptedFile;
+
+      // Prepare form data with encrypted file and encrypted AES key
+      const formData = new FormData();
+      formData.append("file", encryptedBlob, file.name);
+      formData.append("userId", userId);
+      formData.append("encryptedAesKey", encryptedAESKey);
+      if (currentFolder) {
+        formData.append("parentId", currentFolder);
+      }
+
       await axios.post("/api/files/upload", formData, {
         headers: {
           "Content-Type": "multipart/form-data",
@@ -118,7 +190,7 @@ export default function FileUploadForm({
 
       addToast({
         title: "Upload Successful",
-        description: `${file.name} has been uploaded successfully.`,
+        description: `${file.name} has been uploaded securely.`,
         color: "success",
       });
 
@@ -206,6 +278,7 @@ export default function FileUploadForm({
           startContent={<FileUp className="h-4 w-4" />}
           onClick={() => fileInputRef.current?.click()}
           className="flex-1"
+          isDisabled={!keysInitialized}
         >
           Add Image
         </Button>
@@ -233,11 +306,14 @@ export default function FileUploadForm({
                   type="button"
                   onClick={() => fileInputRef.current?.click()}
                   className="text-primary cursor-pointer font-medium inline bg-transparent border-0 p-0 m-0"
+                  disabled={!keysInitialized}
                 >
                   browse
                 </button>
               </p>
-              <p className="text-xs text-default-500 mt-1">Images up to 5MB</p>
+              <p className="text-xs text-default-500 mt-1">
+                Images up to 5MB • End-to-End Encrypted
+              </p>
             </div>
             <Input
               type="file"
@@ -245,7 +321,11 @@ export default function FileUploadForm({
               onChange={handleFileChange}
               className="hidden"
               accept="image/*"
+              disabled={!keysInitialized}
             />
+            {!keysInitialized && (
+              <p className="text-xs text-default-400">Initializing encryption...</p>
+            )}
           </div>
         ) : (
           <div className="space-y-3">
@@ -304,7 +384,7 @@ export default function FileUploadForm({
               className="w-full"
               isDisabled={!!error}
             >
-              {uploading ? `Uploading... ${progress}%` : "Upload Image"}
+              {uploading ? `Uploading... ${progress}%` : "Upload Securely"}
             </Button>
           </div>
         )}
@@ -312,8 +392,10 @@ export default function FileUploadForm({
 
       {/* Upload tips */}
       <div className="bg-default-100/5 p-4 rounded-lg">
-        <h4 className="text-sm font-medium mb-2">Tips</h4>
+        <h4 className="text-sm font-medium mb-2">Security</h4>
         <ul className="text-xs text-default-600 space-y-1">
+          <li>• Files are encrypted end-to-end before upload</li>
+          <li>• Only you can decrypt your files</li>
           <li>• Images are private and only visible to you</li>
           <li>• Supported formats: JPG, PNG, GIF, WebP</li>
           <li>• Maximum file size: 5MB</li>
