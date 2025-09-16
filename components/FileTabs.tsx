@@ -1,89 +1,90 @@
-"use client";
+"use client"
 
-import { File, Star, Trash } from "lucide-react";
-import { Tabs, Tab } from "@heroui/tabs";
-import Badge from "@/components/ui/Badge";
-import type { File as FileType } from "@/lib/db/schema";
+import { File, Star, Trash, Home, RefreshCw } from "lucide-react"
+import { Button } from "@heroui/button"
+import { Badge } from "@/components/badge"
+import type { File as FileType } from "@/lib/db/schema"
+import { cn } from "@/lib/utils"
 
 interface FileTabsProps {
-  activeTab: string;
-  onTabChange: (key: string) => void;
-  files: FileType[];
-  starredCount: number;
-  trashCount: number;
+  activeTab: string
+  onTabChange: (key: string) => void
+  files: FileType[]
+  starredCount: number
+  trashCount: number
 }
 
-export default function FileTabs({
-  activeTab,
-  onTabChange,
-  files,
-  starredCount,
-  trashCount,
-}: FileTabsProps) {
+export default function FileTabs({ activeTab, onTabChange, files, starredCount, trashCount }: FileTabsProps) {
+  const tabs = [
+    // {
+    //   key: "home",
+    //   icon: <Home className="h-4 w-4" />,
+    //   label: "Home",
+    // },
+    // {
+    //   key: "refresh",
+    //   icon: <RefreshCw className="h-4 w-4" />,
+    //   label: "Refresh",
+    // },
+    {
+      key: "all",
+      icon: <File className="h-4 w-4" />,
+      label: "All Files",
+      count: files.filter((file) => !file.isTrash).length,
+    },
+    {
+      key: "starred",
+      icon: <Star className="h-4 w-4" />,
+      label: "Starred",
+      count: starredCount,
+    },
+    {
+      key: "trash",
+      icon: <Trash className="h-4 w-4" />,
+      label: "Trash",
+      count: trashCount,
+    },
+  ]
+
   return (
-    <Tabs
-      selectedKey={activeTab}
-      onSelectionChange={(key) => onTabChange(key as string)}
-      color="primary"
-      variant="underlined"
-      classNames={{
-        base: "w-full overflow-x-auto",
-        tabList: "gap-2 sm:gap-4 md:gap-6 flex-nowrap min-w-full",
-        tab: "py-3 whitespace-nowrap",
-        cursor: "bg-primary",
-      }}
-    >
-      <Tab
-        key="all"
-        title={
-          <div className="flex items-center gap-2 sm:gap-3">
-            <File className="h-4 w-4 sm:h-5 sm:w-5" />
-            <span className="font-medium">All Files</span>
-            <Badge
-              variant="flat"
-              color="default"
+    <div className="flex w-full overflow-x-auto">
+      <div className="flex gap-1 p-1 bg-muted/50 rounded-lg border border-border/50">
+        {tabs.map((tab) => {
+          const isActive = activeTab === tab.key
+          return (
+            <Button
+              key={tab.key}
+              variant={isActive ? "solid" : "ghost"}
               size="sm"
-              aria-label={`${files.filter((file) => !file.isTrash).length} files`}
+              onClick={() => onTabChange(tab.key)}
+              className={cn(
+                "h-9 px-4 text-sm font-medium transition-all duration-200 rounded-md",
+                "min-w-[120px] flex items-center justify-center gap-2",
+                isActive
+                  ? "bg-background text-foreground shadow-sm border border-border/50"
+                  : "text-muted-foreground hover:text-foreground hover:bg-muted/80",
+              )}
+              aria-label={tab.label}
             >
-              {files.filter((file) => !file.isTrash).length}
-            </Badge>
-          </div>
-        }
-      />
-      <Tab
-        key="starred"
-        title={
-          <div className="flex items-center gap-2 sm:gap-3">
-            <Star className="h-4 w-4 sm:h-5 sm:w-5" />
-            <span className="font-medium">Starred</span>
-            <Badge
-              variant="flat"
-              color="warning"
-              size="sm"
-              aria-label={`${starredCount} starred files`}
-            >
-              {starredCount}
-            </Badge>
-          </div>
-        }
-      />
-      <Tab
-        key="trash"
-        title={
-          <div className="flex items-center gap-2 sm:gap-3">
-            <Trash className="h-4 w-4 sm:h-5 sm:w-5" />
-            <span className="font-medium">Trash</span>
-            <Badge
-              variant="solid"
-              color="danger"
-              size="sm"
-              aria-label={`${trashCount} files in trash`}
-            >
-              {trashCount}
-            </Badge>
-          </div>
-        }
-      />
-    </Tabs>
-  );
+              {tab.icon}
+              <span className="hidden sm:inline font-medium">{tab.label}</span>
+              <span className="sm:hidden font-medium">{tab.label.split(" ")[0]}</span>
+              {tab.count !== undefined && (
+                <Badge
+                  variant={isActive ? "secondary" : "outline"}
+                  className={cn(
+                    "ml-1 h-5 px-1.5 text-xs font-medium",
+                    isActive ? "bg-muted text-muted-foreground" : "border-muted-foreground/30 text-muted-foreground",
+                  )}
+                  aria-label={`${tab.count} files`}
+                >
+                  {tab.count}
+                </Badge>
+              )}
+            </Button>
+          )
+        })}
+      </div>
+    </div>
+  )
 }

@@ -32,9 +32,10 @@ export default async function Dashboard() {
         <DashboardContent
           userId={userId}
           userName={
+            user?.emailAddresses?.[0]?.emailAddress ||
+            user?.username ||
             user?.firstName ||
             user?.fullName ||
-            user?.emailAddresses?.[0]?.emailAddress ||
             ""
           }
         />

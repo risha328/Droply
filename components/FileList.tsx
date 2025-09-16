@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useMemo } from "react";
-import { Folder, Star, Trash, X, ExternalLink } from "lucide-react";
+import { Folder, Star, Trash, X, ExternalLink, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
 import {
   Table,
   TableHeader,
@@ -13,6 +13,7 @@ import {
 import { Divider } from "@heroui/divider";
 import { Tooltip } from "@heroui/tooltip";
 import { Card } from "@heroui/card";
+import { Pagination } from "@heroui/pagination";
 import { addToast } from "@heroui/toast";
 import { formatDistanceToNow } from "date-fns/formatDistanceToNow";
 import { format } from "date-fns";
@@ -26,6 +27,7 @@ import FileLoadingState from "@/components/FileLoadingState";
 import FileTabs from "@/components/FileTabs";
 import FolderNavigation from "@/components/FolderNavigation";
 import FileActionButtons from "@/components/FileActionButtons";
+import FileSearchBar from "@/components/FileSearchBar";
 
 interface FileListProps {
   userId: string;
@@ -50,6 +52,12 @@ export default function FileList({
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [emptyTrashModalOpen, setEmptyTrashModalOpen] = useState(false);
   const [selectedFile, setSelectedFile] = useState<FileType | null>(null);
+
+  // Search and filter states
+  const [searchQuery, setSearchQuery] = useState("");
+  const [typeFilter, setTypeFilter] = useState("all");
+  const [sortBy, setSortBy] = useState<"name" | "size" | "createdAt">("createdAt");
+  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
 
   // Fetch files
   const fetchFiles = async () => {
@@ -79,18 +87,117 @@ export default function FileList({
     fetchFiles();
   }, [userId, refreshTrigger, currentFolder]);
 
-  // Filter files based on active tab
+  // Filter files based on active tab, search, and type filter
   const filteredFiles = useMemo(() => {
+    let filtered = files;
+
+    // Filter by active tab
     switch (activeTab) {
       case "starred":
-        return files.filter((file) => file.isStarred && !file.isTrash);
+        filtered = filtered.filter((file) => file.isStarred && !file.isTrash);
+        break;
       case "trash":
-        return files.filter((file) => file.isTrash);
+        filtered = filtered.filter((file) => file.isTrash);
+        break;
       case "all":
       default:
-        return files.filter((file) => !file.isTrash);
+        filtered = filtered.filter((file) => !file.isTrash);
+        break;
     }
-  }, [files, activeTab]);
+
+    // Apply search filter
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase();
+      filtered = filtered.filter((file) =>
+        file.name.toLowerCase().includes(query)
+      );
+    }
+
+    // Apply type filter
+    if (typeFilter !== "all") {
+      if (typeFilter === "folder") {
+        filtered = filtered.filter((file) => file.isFolder);
+      } else if (typeFilter === "image") {
+        filtered = filtered.filter((file) =>
+          file.type.startsWith("image/") && !file.isFolder
+        );
+      } else if (typeFilter === "document") {
+        filtered = filtered.filter((file) =>
+          !file.isFolder && (
+            file.type.includes("pdf") ||
+            file.type.includes("document") ||
+            file.type.includes("text") ||
+            file.type.includes("word") ||
+            file.type.includes("excel") ||
+            file.type.includes("powerpoint") ||
+            file.type.includes("msword") ||
+            file.type.includes("vnd.openxmlformats")
+          )
+        );
+      } else if (typeFilter === "other") {
+        filtered = filtered.filter((file) =>
+          !file.isFolder &&
+          !file.type.startsWith("image/") &&
+          !file.type.includes("pdf") &&
+          !file.type.includes("document") &&
+          !file.type.includes("text") &&
+          !file.type.includes("word") &&
+          !file.type.includes("excel") &&
+          !file.type.includes("powerpoint") &&
+          !file.type.includes("msword") &&
+          !file.type.includes("vnd.openxmlformats")
+        );
+      }
+    }
+
+    // Apply sorting
+    filtered.sort((a, b) => {
+      let aValue: any;
+      let bValue: any;
+
+      switch (sortBy) {
+        case "name":
+          aValue = a.name.toLowerCase();
+          bValue = b.name.toLowerCase();
+          break;
+        case "size":
+          aValue = a.isFolder ? 0 : a.size;
+          bValue = b.isFolder ? 0 : b.size;
+          break;
+        case "createdAt":
+        default:
+          aValue = new Date(a.createdAt).getTime();
+          bValue = new Date(b.createdAt).getTime();
+          break;
+      }
+
+      if (sortOrder === "asc") {
+        return aValue > bValue ? 1 : aValue < bValue ? -1 : 0;
+      } else {
+        return aValue < bValue ? 1 : aValue > bValue ? -1 : 0;
+      }
+    });
+
+    return filtered;
+  }, [files, activeTab, searchQuery, typeFilter, sortBy, sortOrder]);
+
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
+
+  // Calculate paginated files
+  const paginatedFiles = useMemo(() => {
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    return filteredFiles.slice(startIndex, startIndex + itemsPerPage);
+  }, [filteredFiles, currentPage]);
+
+  // Calculate total pages
+  const totalPages = Math.ceil(filteredFiles.length / itemsPerPage);
+
+  // Reset page when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [activeTab, searchQuery, typeFilter, currentFolder]);
 
   // Count files in trash
   const trashCount = useMemo(() => {
@@ -413,6 +520,15 @@ export default function FileList({
         onEmptyTrash={() => setEmptyTrashModalOpen(true)}
       />
 
+      {/* Search and filter bar */}
+      {activeTab !== "trash" && (
+        <FileSearchBar
+          onSearch={setSearchQuery}
+          onFilter={setTypeFilter}
+          placeholder="Search files and folders..."
+        />
+      )}
+
       <Divider className="my-4" />
 
       {/* Files table */}
@@ -445,7 +561,7 @@ export default function FileList({
                 <TableColumn width={240}>Actions</TableColumn>
               </TableHeader>
               <TableBody>
-                {filteredFiles.map((file) => (
+                {paginatedFiles.map((file) => (
                   <TableRow
                     key={file.id}
                     className={`hover:bg-default-100 transition-colors ${
@@ -536,6 +652,20 @@ export default function FileList({
             </Table>
           </div>
         </Card>
+      )}
+
+      {/* Pagination controls */}
+      {filteredFiles.length > itemsPerPage && (
+        <div className="flex justify-center mt-4">
+          <Pagination
+            total={totalPages}
+            page={currentPage}
+            onChange={setCurrentPage}
+            showControls
+            showShadow
+            color="primary"
+          />
+        </div>
       )}
 
       {/* Delete confirmation modal */}
