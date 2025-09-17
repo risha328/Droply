@@ -28,6 +28,7 @@ import FileTabs from "@/components/FileTabs";
 import FolderNavigation from "@/components/FolderNavigation";
 import FileActionButtons from "@/components/FileActionButtons";
 import FileSearchBar from "@/components/FileSearchBar";
+import ShareModal from "@/components/ShareModal";
 
 interface FileListProps {
   userId: string;
@@ -51,6 +52,7 @@ export default function FileList({
   // Modal states
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [emptyTrashModalOpen, setEmptyTrashModalOpen] = useState(false);
+  const [shareModalOpen, setShareModalOpen] = useState(false);
   const [selectedFile, setSelectedFile] = useState<FileType | null>(null);
 
   // Search and filter states
@@ -644,6 +646,10 @@ export default function FileList({
                           setDeleteModalOpen(true);
                         }}
                         onDownload={handleDownloadFile}
+                        onShare={(file) => {
+                          setSelectedFile(file);
+                          setShareModalOpen(true);
+                        }}
                       />
                     </TableCell>
                   </TableRow>
@@ -700,6 +706,14 @@ export default function FileList({
         onConfirm={handleEmptyTrash}
         isDangerous={true}
         warningMessage={`You are about to permanently delete all ${trashCount} items in your trash. These files will be permanently removed from your account and cannot be recovered.`}
+      />
+
+      {/* Share modal */}
+      <ShareModal
+        isOpen={shareModalOpen}
+        onOpenChange={setShareModalOpen}
+        file={selectedFile}
+        userId={userId}
       />
     </div>
   );

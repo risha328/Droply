@@ -43,11 +43,24 @@ export const files = pgTable("files", {
 
 })
 
+export const shares = pgTable("shares", {
+    id: text("id").primaryKey(), // unique share ID
+    fileId: uuid("file_id").notNull(),
+    userId: text("user_id").notNull(),
+    passwordHash: text("password_hash"),
+    expiresAt: timestamp("expires_at"),
+    viewOnce: boolean("view_once").default(false).notNull(),
+    viewCount: integer("view_count").default(0).notNull(),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
 
 /**
  parent : each file/folder can have one parent folder/file
  children : each file/folder can have multiple children folders/files
  */
+
 export const filesRelations = relations(files, ({one, many}) => ({
     parent: one(files, {
         fields:[files.parentId],
@@ -58,7 +71,9 @@ export const filesRelations = relations(files, ({one, many}) => ({
     children: many(files),
 }));
 
-//Type definations 
+//Type definations
 
 export type File = typeof files.$inferSelect;
 export type NewFile = typeof files.$inferInsert;
+export type Share = typeof shares.$inferSelect;
+export type NewShare = typeof shares.$inferInsert;

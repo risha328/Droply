@@ -1,6 +1,6 @@
 "use client";
 
-import { Star, Trash, X, ArrowUpFromLine, Download } from "lucide-react";
+import { Star, Trash, X, ArrowUpFromLine, Download, Share } from "lucide-react";
 import { Button } from "@heroui/button";
 
 import { type File } from "@/lib/db/schema";
@@ -11,6 +11,7 @@ interface FileActionsProps {
   onTrash: (id: string) => void;
   onDelete: (file: File) => void;
   onDownload: (file: File) => void;
+  onShare: (file: File) => void;
 }
 
 export default function FileActions({
@@ -19,6 +20,7 @@ export default function FileActions({
   onTrash,
   onDelete,
   onDownload,
+  onShare,
 }: FileActionsProps) {
   return (
     <div className="flex flex-wrap gap-2 justify-end">
@@ -32,6 +34,19 @@ export default function FileActions({
           startContent={<Download className="h-4 w-4" />}
         >
           <span className="hidden sm:inline">Download</span>
+        </Button>
+      )}
+
+      {/* Share button */}
+      {!file.isTrash && !file.isFolder && (
+        <Button
+          variant="flat"
+          size="sm"
+          onClick={() => onShare(file)}
+          className="min-w-0 px-2"
+          startContent={<Share className="h-4 w-4" />}
+        >
+          <span className="hidden sm:inline">Share</span>
         </Button>
       )}
 
