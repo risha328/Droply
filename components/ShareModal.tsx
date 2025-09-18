@@ -101,18 +101,18 @@ export default function ShareModal({
   if (!file) return null;
 
   return (
-    <Modal isOpen={isOpen} onOpenChange={onOpenChange} size="sm" backdrop="blur">
-      <ModalContent>
-        <ModalHeader className="flex items-center gap-2">
-          <Share className="h-5 w-5" />
-          Share "{file.name}"
+    <Modal isOpen={isOpen} onOpenChange={onOpenChange} size="lg" backdrop="blur">
+      <ModalContent className="border-2 border-white-400 rounded-lg shadow-xl transition-shadow duration-300 hover:shadow-2xl">
+        <ModalHeader className="flex items-center gap-2 border-b-2 border-white-300 pb-3">
+          <Share className="h-5 w-5 text-white-900 flex-shrink-0" />
+          <span className="font-extrabold text-white-950 text-lg truncate">Share "{file.name}"</span>
         </ModalHeader>
-        <ModalBody className="space-y-4">
+        <ModalBody className="space-y-8 px-6 py-4">
           {/* Password Protection */}
-          <div className="space-y-2">
+          <div className="space-y-3">
             <div className="flex items-center gap-2">
-              <Lock className="h-4 w-4 text-default-500" />
-              <label className="text-sm font-medium">Password Protection (Optional)</label>
+              <Lock className="h-4 w-4 text-white-800" />
+              <label className="text-sm font-bold text-white-900">Password Protection (Optional)</label>
             </div>
             <Input
               type="password"
@@ -120,23 +120,24 @@ export default function ShareModal({
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               size="sm"
+              className="border-2 border-white-300 focus:border-primary-500 focus:ring-2 focus:ring-primary-200 rounded-md"
             />
-            <p className="text-xs text-default-500">
+            <p className="text-xs text-white-600">
               Leave empty for public access
             </p>
           </div>
 
-          {/* Expiry Time */}
-          <div className="space-y-2">
+          {/* Expiry Time - Added margin to prevent dropdown overlap */}
+          <div className="space-y-3 mb-4">
             <div className="flex items-center gap-2">
-              <Clock className="h-4 w-4 text-default-500" />
-              <label className="text-sm font-medium">Link Expiration</label>
+              <Clock className="h-4 w-4 text-white-800" />
+              <label className="text-sm font-bold text-white-900">Link Expiration</label>
             </div>
-            <Dropdown>
+            <Dropdown placement="bottom-start">
               <DropdownTrigger>
                 <Button
                   variant="bordered"
-                  className="w-full justify-start"
+                  className="w-full justify-start border-2 border-white-400 bg-white-100 transition-colors duration-200 hover:bg-white-200 hover:border-white-500 rounded-md"
                   size="sm"
                 >
                   {EXPIRY_OPTIONS.find(option => option.value === expiry)?.label || "Select expiry"}
@@ -150,6 +151,9 @@ export default function ShareModal({
                   const selected = Array.from(keys)[0] as string;
                   setExpiry(parseInt(selected));
                 }}
+                className=" border-2 border-white-400 shadow-lg rounded-md z-50"
+                // Added style to ensure dropdown appears above other elements
+                style={{ zIndex: 1000 }}
               >
                 {EXPIRY_OPTIONS.map((option) => (
                   <DropdownItem key={option.value.toString()}>
@@ -160,18 +164,18 @@ export default function ShareModal({
             </Dropdown>
           </div>
 
-          {/* View Once Option */}
-          <div className="flex items-center gap-2">
+          {/* View Once Option - Added extra margin to prevent overlap */}
+          <div className="flex items-center gap-3 mt-6">
             <Checkbox
               isSelected={viewOnce}
               onValueChange={setViewOnce}
               size="sm"
             />
             <div className="flex items-center gap-2">
-              <Eye className="h-4 w-4 text-default-500" />
+              <Eye className="h-4 w-4 text-white-800" />
               <div>
-                <label className="text-sm font-medium">View Once</label>
-                <p className="text-xs text-default-500">
+                <label className="text-sm font-bold text-white-900">View Once</label>
+                <p className="text-xs text-white-700">
                   Link becomes invalid after first access
                 </p>
               </div>
@@ -180,14 +184,14 @@ export default function ShareModal({
 
           {/* Show share link if available */}
           {shareLink && (
-            <div className="mt-4 p-3 border border-default-300 rounded bg-default-100">
-              <label className="block text-sm font-medium mb-1">Share Link</label>
-              <div className="flex items-center gap-2">
+            <div className="mt-5 p-4 border-2 border-white-400 rounded-lg bg-white-50 transition-shadow duration-300 hover:shadow-lg">
+              <label className="block text-sm font-extrabold mb-2 text-white-900">Share Link</label>
+              <div className="flex items-center gap-3">
                 <input
                   type="text"
                   readOnly
                   value={shareLink}
-                  className="flex-grow bg-default-100 border border-default-300 rounded px-2 py-1 text-xs"
+                  className="flex-grow bg-white-50 border-2 border-white-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-300"
                   onFocus={(e) => e.target.select()}
                 />
                 <Button
@@ -202,6 +206,7 @@ export default function ShareModal({
                     });
                   }}
                   startContent={<Copy className="h-4 w-4" />}
+                  className="border-2 border-white-300 transition-colors duration-200 hover:bg-white-100 hover:border-white-400 rounded-md"
                 >
                   Copy
                 </Button>
@@ -209,11 +214,12 @@ export default function ShareModal({
             </div>
           )}
         </ModalBody>
-        <ModalFooter className="flex justify-end gap-2">
+        <ModalFooter className="flex justify-end gap-3 border-t-2 border-white-300 pt-3 px-6 pb-4">
           <Button
             variant="flat"
             onClick={() => onOpenChange(false)}
             disabled={isLoading}
+            className="border-2 border-white-300 transition-colors duration-200 hover:bg-white-100 hover:border-white-400 rounded-md"
           >
             Cancel
           </Button>
@@ -222,6 +228,7 @@ export default function ShareModal({
             onClick={handleShare}
             isLoading={isLoading}
             startContent={!isLoading && <Share className="h-4 w-4" />}
+            className="border-2 border-primary-500 transition-colors duration-200 hover:bg-primary-700 hover:border-primary-600 rounded-md font-semibold"
           >
             {isLoading ? "Creating..." : "Create Share Link"}
           </Button>
